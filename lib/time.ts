@@ -1,10 +1,24 @@
 // lib/time.ts
-import { addDays as dfAddDays, startOfDay, set, isBefore, isAfter } from 'date-fns';
+import { addDays as dfAddDays, startOfDay, set, isBefore, isAfter } from "date-fns";
+
+/** YYYY-MM-DD i LOKALTID utan UTC-konvertering */
+export function localDateStr(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Bygg Date i LOKALTID från 'YYYY-MM-DD' */
+export function fromLocalDateStr(s: string) {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, (m as number) - 1, d); // lokal midnatt
+}
 
 export const toStartOfDay = (d: Date) => startOfDay(d);
 export const addDays = (d: Date, n: number) => dfAddDays(d, n);
 
-// Generera 60-minutersslots mellan 08:00–17:00 (slutet exkluderat)
+// 60-minutersslotar 08–17 (slut exkl.)
 export function generateHourlySlotsForDay(day: Date) {
   const slots: { start: Date; end: Date }[] = [];
   for (let h = 8; h < 17; h++) {
@@ -15,6 +29,5 @@ export function generateHourlySlotsForDay(day: Date) {
   return slots;
 }
 
-// Överlapp: [s1,e1) överlappar [s2,e2) om s1 < e2 && e1 > s2
 export const overlaps = (s1: Date, e1: Date, s2: Date, e2: Date) =>
   isBefore(s1, e2) && isAfter(e1, s2);
