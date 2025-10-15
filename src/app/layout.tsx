@@ -34,8 +34,6 @@ export const metadata: Metadata = {
     title: "Room Booking App",
     description: "Book meeting rooms quickly and easily with this minimal full-stack Next.js app.",
   },
-
-  themeColor: "#ffffff",
 };
 
 export default function RootLayout({

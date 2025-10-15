@@ -1,21 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { localDateStr, fromLocalDateStr } from "@/lib/time";
+import { useRooms } from "../hooks/useRooms";
+import { useAvailability } from "../hooks/useAvailability";
+import DayColumn from "./DayColumn";
+import FilterSheet from "./FilterSheet";
+import type { AvailabilityView, SelectedSlot, SlotVM } from "../types";
 
-type Room = { id: number; name: string; capacity: number };
-type Slot = { start: string; end: string; available: boolean };
-type DayRooms = {
-  date: string;
-  rooms: { id: number; name: string; capacity: number; slots: Slot[] }[];
-};
-type Availability = { start: string; end: string; days: DayRooms[] };
-
-function fmtTime(s: string) {
-  const d = new Date(s);
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
 function fmtDateLabel(iso: string) {
   const d = fromLocalDateStr(iso);
   return d.toLocaleDateString([], { day: "2-digit", month: "short" });
@@ -27,67 +20,68 @@ function plusDaysStr(iso: string, n: number) {
 }
 
 export default function BookClient() {
-  // start = idag (lokalt), fönster = 3 dagar (0,1,2)
-  const [startDate, setStartDate] = useState<string>(localDateStr(new Date()));
-  const [days] = useState<number>(3);
+  // datumfönster
+  const [startDate, setStartDate] = useState(localDateStr(new Date()));
+  const days = 3;
 
-  const [rooms, setRooms] = useState<Room[]>([]);
+  // rum + filter
+  const { rooms } = useRooms();
   const [selectedRooms, setSelectedRooms] = useState<number[]>([]);
-
-  // draft i panel (appl. först när man trycker Välj)
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedRoomsDraft, setSelectedRoomsDraft] = useState<number[]>([]);
 
-  const [data, setData] = useState<Availability | null>(null);
-  const [loading, setLoading] = useState(false);
+  // hämta availability
+  const { data, loading } = useAvailability(startDate, days);
 
-  const [selected, setSelected] = useState<{
-    roomId: number;
-    start: string;
-    end: string;
-  } | null>(null);
-
+  // initiera valda rum när rooms laddats
   useEffect(() => {
-    fetch("/api/rooms", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((list: Room[]) => {
-        setRooms(list);
-        const all = list.map((x) => x.id);
-        setSelectedRooms(all);
-        setSelectedRoomsDraft(all);
-      });
-  }, []);
+    if (rooms.length && selectedRooms.length === 0) {
+      const all = rooms.map((r) => r.id);
+      setSelectedRooms(all);
+      setSelectedRoomsDraft(all);
+    }
+  }, [rooms, selectedRooms.length]);
 
-  // hämta availability när startDate ändras
-  useEffect(() => {
-    setLoading(true);
-    const u = new URL("/api/availability", window.location.origin);
-    u.searchParams.set("start", startDate); // lokalt YYYY-MM-DD
-    u.searchParams.set("days", String(days));
-    fetch(u.toString(), { cache: "no-store" })
-      .then((r) => r.json())
-      .then((json: Availability) => setData(json))
-      .finally(() => setLoading(false));
-  }, [startDate, days]);
+  // UI state
+  const [selected, setSelected] = useState<SelectedSlot>(null);
 
-  // klientfilter mot redan hämtad data
-  const filtered = useMemo<Availability | null>(() => {
+  // label uppe i panelen
+  const selectedRoomsLabel =
+    rooms.length > 0 && selectedRooms.length === rooms.length
+      ? "Mötesrum"
+      : `${selectedRooms.length} valda rum`;
+
+  // bygg visningsdata per dag (filtrerat + sorterat) → AvailabilityView
+  const view: AvailabilityView | null = useMemo(() => {
     if (!data) return null;
-    const d = data.days.map((day) => ({
-      ...day,
-      rooms: day.rooms.filter((r) => selectedRooms.includes(r.id)),
-    }));
-    return { ...data, days: d };
+
+    const daysMapped = data.days.map((day) => {
+      // ta endast rum som valts och har lediga slots
+      const roomsWithAvail = day.rooms
+        .filter((r) => selectedRooms.includes(r.id))
+        .map((r) => ({ ...r, slots: r.slots.filter((s) => s.available) }))
+        .filter((r) => r.slots.length > 0);
+
+      // platta ut och sortera på starttid
+      const flatSorted: SlotVM[] = roomsWithAvail
+        .flatMap((room) =>
+          room.slots.map((s) => ({
+            roomId: room.id,
+            roomName: room.name,
+            capacity: room.capacity,
+            start: s.start,
+            end: s.end,
+          }))
+        )
+        .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+
+      return { date: day.date, slots: flatSorted };
+    });
+
+    return { start: data.start, end: data.end, days: daysMapped };
   }, [data, selectedRooms]);
 
-  const headerLabel = (() => {
-    if (!data) return "";
-    const start = fmtDateLabel(data.days[0].date);
-    const end = fmtDateLabel(data.days[data.days.length - 1].date);
-    return `${start} – ${end}`;
-  })();
-
-  // pilar +3 / -3 dagar
+  // navigation
   function nextWindow() {
     setStartDate(plusDaysStr(startDate, 3));
     setSelected(null);
@@ -97,13 +91,12 @@ export default function BookClient() {
     setSelected(null);
   }
 
-  // filterpanel
+  // filter-handlers
   function openFilter() {
     setSelectedRoomsDraft(selectedRooms);
     setFilterOpen(true);
   }
   function toggleDraft(id: number) {
-    setSelected(null);
     setSelectedRoomsDraft((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
@@ -116,16 +109,18 @@ export default function BookClient() {
     setSelectedRoomsDraft([]);
   }
 
+  const headerLabel = view?.days?.length
+    ? `${fmtDateLabel(view.days[0].date)} – ${fmtDateLabel(
+        view.days[view.days.length - 1].date
+      )}`
+    : "";
+
   const anySelected = !!selected;
-  const selectedRoomsLabel =
-    rooms.length > 0 && selectedRooms.length === rooms.length
-      ? "Mötesrum"
-      : `${selectedRooms.length} valda rum`;
 
   return (
     <div className="space-y-4">
       <div className="rounded-[24px] border">
-        {/* Rad 1: knapp för filter (Mötesrum) */}
+        {/* Rad 1: filterknapp */}
         <div className="px-4 py-3">
           <button
             onClick={openFilter}
@@ -133,12 +128,11 @@ export default function BookClient() {
             aria-haspopup="dialog"
             aria-expanded={filterOpen}
           >
-            {selectedRoomsLabel}
-            <span className="text-lg leading-none">▾</span>
+            {selectedRoomsLabel} <span className="text-lg leading-none">▾</span>
           </button>
         </div>
 
-        {/* Rad 2: Datumspann + pilar */}
+        {/* Rad 2: pilar + datumspann */}
         <div className="flex items-center justify-between border-t px-4 py-3">
           <button
             onClick={prevWindow}
@@ -147,9 +141,7 @@ export default function BookClient() {
           >
             ←
           </button>
-
           <div className="text-sm text-neutral-700">{headerLabel}</div>
-
           <button
             onClick={nextWindow}
             className="grid size-9 place-items-center rounded-full border text-lg hover:bg-neutral-50"
@@ -159,86 +151,21 @@ export default function BookClient() {
           </button>
         </div>
 
-        {/* Rad 3: Kalendern med slots */}
+        {/* Rad 3: kalender */}
         <div className="px-3 pb-3">
           <div className="max-h-[70vh] overflow-y-auto pr-2">
-            <div className="grid grid-cols-3 divide-x divide-neutral-500">
-              {filtered?.days?.map((day) => {
-                // Endast rum med lediga slots
-                const roomsWithAvailable = day.rooms
-                  .map((room) => ({
-                    ...room,
-                    slots: room.slots.filter((s) => s.available),
-                  }))
-                  .filter((room) => room.slots.length > 0);
-
-                // Platta ut och sortera på starttid (08→17)
-                const flatSorted = roomsWithAvailable
-                  .flatMap((room) =>
-                    room.slots.map((s) => ({
-                      ...s,
-                      roomId: room.id,
-                      roomName: room.name,
-                      capacity: room.capacity,
-                    }))
-                  )
-                  .sort(
-                    (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
-                  );
-
-                return (
-                  <div key={day.date} className="p-3">
-                    {/* Datumrubrik i kolumnen */}
-                    <div className="mb-3 text-base font-semibold text-neutral-800">
-                      {fmtDateLabel(day.date)}
-                    </div>
-
-                    {/* Lista med slots (lika höga knappar) */}
-                    <div className="flex flex-col gap-2">
-                      {flatSorted.length === 0 && (
-                        <div className="text-xs text-neutral-400">
-                          Inga lediga tider
-                        </div>
-                      )}
-
-                      {flatSorted.map((slot, i) => {
-                        const isSel =
-                          selected?.roomId === slot.roomId &&
-                          selected?.start === slot.start &&
-                          selected?.end === slot.end;
-
-                        return (
-                          <button
-                            key={`${slot.roomId}-${i}`}
-                            onClick={() =>
-                              setSelected({
-                                roomId: slot.roomId,
-                                start: slot.start,
-                                end: slot.end,
-                              })
-                            }
-                            aria-pressed={isSel}
-                            className={[
-                              // fast höjd → lika rutor, snygg kalenderkänsla
-                              "flex h-16 flex-col justify-center rounded-xl border px-3 py-2 text-[13px] leading-tight",
-                              isSel
-                                ? "bg-emerald-600 text-white border-emerald-600"
-                                : "bg-white hover:bg-neutral-50",
-                            ].join(" ")}
-                          >
-                            <span className="font-medium">
-                              {slot.roomName} ({slot.capacity})
-                            </span>
-                            <span className="text-xs text-neutral-600">
-                              {fmtTime(slot.start)}–{fmtTime(slot.end)}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="grid grid-cols-3 divide-x-2 divide-neutral-300">
+              {view?.days?.map((day) => (
+                <DayColumn
+                  key={day.date}
+                  dateLabel={fmtDateLabel(day.date)}
+                  slots={day.slots}
+                  selected={selected}
+                  onSelect={(s) =>
+                    setSelected({ roomId: s.roomId, start: s.start, end: s.end })
+                  }
+                />
+              ))}
             </div>
           </div>
         </div>
@@ -264,51 +191,16 @@ export default function BookClient() {
         </Link>
       </div>
 
-      {/* Filter-panel */}
-      {filterOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 grid place-items-center bg-black/20 p-4"
-          onClick={() => setFilterOpen(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl border bg-white p-5 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ul className="space-y-4">
-              {rooms.map((r) => (
-                <li key={r.id} className="flex items-center justify-between">
-                  <span className="text-[15px]">
-                    {r.name} <span className="text-neutral-500">({r.capacity} personer)</span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    className="size-5 accent-black"
-                    checked={selectedRoomsDraft.includes(r.id)}
-                    onChange={() => toggleDraft(r.id)}
-                  />
-                </li>
-              ))}
-            </ul>
-
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <button
-                onClick={applyDraft}
-                className="rounded-2xl bg-black py-3 text-white hover:opacity-90"
-              >
-                Välj
-              </button>
-              <button
-                onClick={clearDraft}
-                className="rounded-2xl bg-neutral-800 py-3 text-white hover:opacity-90"
-              >
-                Avmarkera
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Filter-sheet */}
+      <FilterSheet
+        open={filterOpen}
+        rooms={rooms}
+        draft={selectedRoomsDraft}
+        onToggle={toggleDraft}
+        onApply={applyDraft}
+        onClear={clearDraft}
+        onClose={() => setFilterOpen(false)}
+      />
 
       {loading && (
         <div className="fixed inset-0 z-40 grid place-items-center bg-white/60 text-sm">
