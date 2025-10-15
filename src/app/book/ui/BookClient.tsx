@@ -80,7 +80,6 @@ export default function BookClient() {
     return { ...data, days: d };
   }, [data, selectedRooms]);
 
-  // rubriken i mitten “14 okt – 16 okt”
   const headerLabel = (() => {
     if (!data) return "";
     const start = fmtDateLabel(data.days[0].date);
@@ -126,7 +125,7 @@ export default function BookClient() {
   return (
     <div className="space-y-4">
       <div className="rounded-[24px] border">
-        {/* Rad 1: ENDA knappen för filter (Mötesrum) */}
+        {/* Rad 1: knapp för filter (Mötesrum) */}
         <div className="px-4 py-3">
           <button
             onClick={openFilter}
@@ -160,46 +159,87 @@ export default function BookClient() {
           </button>
         </div>
 
-        {/* 3 kolumner med egna ramar */}
+        {/* Rad 3: Kalendern med slots */}
         <div className="px-3 pb-3">
-          <div className="grid grid-cols-3 gap-3">
-            {filtered?.days?.map((day) => (
-              <div key={day.date} className="rounded-2xl border p-3">
-                <div className="mb-2 text-sm font-medium">{fmtDateLabel(day.date)}</div>
-                <div className="space-y-3">
-                  {day.rooms.map((room) => (
-                    <div key={room.id}>
-                      <div className="mb-1 text-xs text-neutral-600">{room.name}</div>
-                      <div className="flex flex-col gap-2">
-                        {room.slots.map((s, i) => {
-                          const isSel =
-                            selected?.roomId === room.id &&
-                            selected?.start === s.start &&
-                            selected?.end === s.end;
-                          const disabled = !s.available;
-                          return (
-                            <button
-                              key={i}
-                              disabled={disabled}
-                              onClick={() => setSelected({ roomId: room.id, start: s.start, end: s.end })}
-                              aria-pressed={isSel}
-                              className={[
-                                "h-10 rounded-xl border px-4 text-[13px]",
-                                "text-left",
-                                "disabled:opacity-40 disabled:cursor-not-allowed",
-                                isSel ? "bg-emerald-600 text-white border-emerald-600" : "bg-white",
-                              ].join(" ")}
-                            >
-                              {fmtTime(s.start)}–{fmtTime(s.end)}
-                            </button>
-                          );
-                        })}
-                      </div>
+          <div className="max-h-[70vh] overflow-y-auto pr-2">
+            <div className="grid grid-cols-3 divide-x divide-neutral-500">
+              {filtered?.days?.map((day) => {
+                // Endast rum med lediga slots
+                const roomsWithAvailable = day.rooms
+                  .map((room) => ({
+                    ...room,
+                    slots: room.slots.filter((s) => s.available),
+                  }))
+                  .filter((room) => room.slots.length > 0);
+
+                // Platta ut och sortera på starttid (08→17)
+                const flatSorted = roomsWithAvailable
+                  .flatMap((room) =>
+                    room.slots.map((s) => ({
+                      ...s,
+                      roomId: room.id,
+                      roomName: room.name,
+                      capacity: room.capacity,
+                    }))
+                  )
+                  .sort(
+                    (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
+                  );
+
+                return (
+                  <div key={day.date} className="p-3">
+                    {/* Datumrubrik i kolumnen */}
+                    <div className="mb-3 text-base font-semibold text-neutral-800">
+                      {fmtDateLabel(day.date)}
                     </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+
+                    {/* Lista med slots (lika höga knappar) */}
+                    <div className="flex flex-col gap-2">
+                      {flatSorted.length === 0 && (
+                        <div className="text-xs text-neutral-400">
+                          Inga lediga tider
+                        </div>
+                      )}
+
+                      {flatSorted.map((slot, i) => {
+                        const isSel =
+                          selected?.roomId === slot.roomId &&
+                          selected?.start === slot.start &&
+                          selected?.end === slot.end;
+
+                        return (
+                          <button
+                            key={`${slot.roomId}-${i}`}
+                            onClick={() =>
+                              setSelected({
+                                roomId: slot.roomId,
+                                start: slot.start,
+                                end: slot.end,
+                              })
+                            }
+                            aria-pressed={isSel}
+                            className={[
+                              // fast höjd → lika rutor, snygg kalenderkänsla
+                              "flex h-16 flex-col justify-center rounded-xl border px-3 py-2 text-[13px] leading-tight",
+                              isSel
+                                ? "bg-emerald-600 text-white border-emerald-600"
+                                : "bg-white hover:bg-neutral-50",
+                            ].join(" ")}
+                          >
+                            <span className="font-medium">
+                              {slot.roomName} ({slot.capacity})
+                            </span>
+                            <span className="text-xs text-neutral-600">
+                              {fmtTime(slot.start)}–{fmtTime(slot.end)}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

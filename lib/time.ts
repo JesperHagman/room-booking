@@ -1,4 +1,3 @@
-// lib/time.ts
 import { addDays as dfAddDays, startOfDay, set, isBefore, isAfter } from "date-fns";
 
 /** YYYY-MM-DD i LOKALTID utan UTC-konvertering */
