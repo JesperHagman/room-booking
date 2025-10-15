@@ -61,47 +61,19 @@ The app will be available at **http://localhost:3000** 🚀
 ## 📁 Project Structure
 ```
 room-booking/
-│
 ├── src/
 │   └── app/
-│       ├── api/                   # API routes (rooms, availability, bookings)
-│       │   ├── availability/      # Check room availability
-│       │   ├── bookings/          # Handle new bookings
-│       │   └── rooms/             # Fetch all rooms
-│       │
-│       ├── book/                  # Booking flow (selection + confirmation)
-│       │   ├── confirm/           # Confirmation step
-│       │   │   └── page.tsx
-│       │   └── ui/                # UI components for booking pages
-│       │       ├── BookClient.tsx
-│       │       └── ConfirmClient.tsx
-│       │
-│       ├── globals.css            # Tailwind setup
-│       ├── layout.tsx             # Global layout wrapper
-│       ├── favicon.ico            # App icon
-│       └── page.tsx               # Home page ("Book a room")
+│       ├── api/           # REST API routes (rooms, bookings, availability)
+│       ├── book/          # Booking flow pages + UI components
+│       ├── globals.css    # Tailwind + global styles
+│       ├── layout.tsx     # Root layout
+│       └── page.tsx       # Home page ("Book a room")
 │
-├── lib/
-│   ├── prisma.ts                  # Prisma client configuration
-│   └── time.ts                    # Time helper utilities
-│
-├── prisma/
-│   ├── migrations/                # Prisma migrations
-│   ├── dev.db                     # SQLite database
-│   ├── schema.prisma              # Database schema (Room + Booking)
-│   └── seed.js                    # Seeds default rooms
-│
-├── public/                        # Static assets (SVGs, icons, etc.)
-│
-├── .env                           # Environment variables
-├── .gitignore                     # Git ignore rules
-├── eslint.config.mjs              # ESLint configuration
-├── next.config.ts                 # Next.js configuration
-├── package.json                   # Dependencies and scripts
-├── package-lock.json              # Lockfile
-├── postcss.config.mjs             # PostCSS configuration
-├── tsconfig.json                  # TypeScript configuration
-└── README.md                      # Project documentation
+├── lib/                   # Shared helpers (Prisma client, time utils)
+├── prisma/                # Database schema, migrations, and seeds
+├── public/                # Static assets (icons, images)
+├── .env                   # Environment variables (ignored by Git)
+└── config files           # ESLint, PostCSS, TypeScript, etc.                    # Project documentation
 ```
 
 ---
