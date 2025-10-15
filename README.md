@@ -1,36 +1,132 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🏢 Room Booking App
 
-## Getting Started
+A clean and minimal room booking system built with **Next.js**, **Prisma**, and **SQLite**.  
+Users can view available rooms, select a time slot, and confirm a booking — all in a simple and responsive interface.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🚀 Tech Stack
+- **Next.js (App Router)** – unified frontend and backend  
+- **React** – client and server components  
+- **Tailwind CSS** – utility-first styling  
+- **Prisma ORM** – database modeling and querying  
+- **SQLite** – lightweight local database  
+- **TypeScript** – for safer and maintainable code  
+
+---
+
+## ⚙️ Getting Started
+
+1️⃣ **Clone the repository**
+```
+git clone https://github.com/JesperHagman/room-booking.git
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2️⃣ **Install dependencies**
+```
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3️⃣ **Create a `.env` file**
+```
+DATABASE_URL="file:./prisma/dev.db"
+NEXT_PUBLIC_BASE_URL="http://localhost:3000"
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4️⃣ **Setup the database**
+```
+npx prisma migrate dev --name init
+npx prisma db seed
+```
 
-## Learn More
+5️⃣ **Run the development server**
+```
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+The app will be available at **http://localhost:3000** 🚀
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🧩 Features
+- View available rooms for the next three days (today + 2 days)  
+- Real-time room availability and booking status  
+- Prevents double bookings  
+- Booking confirmation with automatic redirect after 10 seconds  
+- Minimal and responsive design  
+- Built with simplicity and readability in mind  
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📁 Project Structure
+```
+room-booking/
+│
+├── src/
+│   └── app/
+│       ├── api/                   # API routes (rooms, availability, bookings)
+│       │   ├── availability/      # Check room availability
+│       │   ├── bookings/          # Handle new bookings
+│       │   └── rooms/             # Fetch all rooms
+│       │
+│       ├── book/                  # Booking flow (selection + confirmation)
+│       │   ├── confirm/           # Confirmation step
+│       │   │   └── page.tsx
+│       │   └── ui/                # UI components for booking pages
+│       │       ├── BookClient.tsx
+│       │       └── ConfirmClient.tsx
+│       │
+│       ├── globals.css            # Tailwind setup
+│       ├── layout.tsx             # Global layout wrapper
+│       ├── favicon.ico            # App icon
+│       └── page.tsx               # Home page ("Book a room")
+│
+├── lib/
+│   ├── prisma.ts                  # Prisma client configuration
+│   └── time.ts                    # Time helper utilities
+│
+├── prisma/
+│   ├── migrations/                # Prisma migrations
+│   ├── dev.db                     # SQLite database
+│   ├── schema.prisma              # Database schema (Room + Booking)
+│   └── seed.js                    # Seeds default rooms
+│
+├── public/                        # Static assets (SVGs, icons, etc.)
+│
+├── .env                           # Environment variables
+├── .gitignore                     # Git ignore rules
+├── eslint.config.mjs              # ESLint configuration
+├── next.config.ts                 # Next.js configuration
+├── package.json                   # Dependencies and scripts
+├── package-lock.json              # Lockfile
+├── postcss.config.mjs             # PostCSS configuration
+├── tsconfig.json                  # TypeScript configuration
+└── README.md                      # Project documentation
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 💡 Design & Logic
+- **Time slots:** 08:00–17:00 (1-hour increments)  
+- **Date range:** current day + two upcoming days  
+- **Availability:** Past times are filtered out automatically  
+- **UI layout:** Scrollable 3-column grid with sticky headers  
+- **UX details:** Clean transitions, modal confirmation, and intuitive flow  
+- **Error handling:** Prevents empty names and duplicate bookings  
+
+---
+
+## 🚧 Potential Improvements
+- Add authentication and user accounts  
+- Improve mobile layout (1 column per day)  
+- Admin panel to manage rooms and bookings  
+- Calendar integration (Google or Outlook)  
+
+---
+
+## ✅ Summary
+A lightweight, full-stack booking app focused on **clarity, usability, and clean architecture**.  
+Built to demonstrate **modern full-stack principles** with **Next.js, Prisma, and Tailwind**.
+
+**Developed by:** _Jesper Hagman_  
+📅 _October 2025_
