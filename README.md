@@ -73,7 +73,8 @@ room-booking/
 ├── prisma/                # Database schema, migrations, and seeds
 ├── public/                # Static assets (icons, images)
 ├── .env                   # Environment variables (ignored by Git)
-└── config files           # ESLint, PostCSS, TypeScript, etc.                    # Project documentation
+├── config files           # ESLint, PostCSS, TypeScript, etc.
+└── README.md              # Project documentation
 ```
 
 ---
