@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// [s1,e1) överlappar [s2,e2) om s1 < e2 && e1 > s2
-function overlaps(s1: Date, e1: Date, s2: Date, e2: Date) {
-  return s1 < e2 && e1 > s2;
-}
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -36,7 +31,6 @@ export async function POST(req: NextRequest) {
     }
 
     // 3) Konfliktkontroll (överlappande bokningar)
-    //   Hitta första bokning som överlappar intervallet
     const conflicting = await prisma.booking.findFirst({
       where: {
         roomId,

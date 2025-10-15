@@ -1,4 +1,3 @@
-// src/app/book/confirm/page.tsx
 import ConfirmClient from "../ui/ConfirmClient";
 
 export const metadata = { title: "Vem bokar?" };
